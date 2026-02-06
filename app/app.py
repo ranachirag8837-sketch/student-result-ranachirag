@@ -5,7 +5,7 @@ import joblib
 import matplotlib.pyplot as plt
 import streamlit.components.v1 as components
 from pathlib import Path
-#from PIL import Image
+
 
 # =============================
 # Page Config
@@ -263,3 +263,4 @@ if predict and linear_model is not None:
 # =============================
 st.markdown("<br><hr><center style='opacity:0.4;'>Hybrid Predictor AI • Internship Project 2026</center>",
             unsafe_allow_html=True)
+
