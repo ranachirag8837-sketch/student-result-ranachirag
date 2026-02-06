@@ -100,8 +100,8 @@ with col2:
     st.markdown("<h1>🎓 Student Result Prediction</h1>", unsafe_allow_html=True)
     st.markdown("<p style='opacity:0.8;'>Hybrid ML Model (Pass/Fail + Marks Prediction)</p>", unsafe_allow_html=True)
 
-    sh = st.text_input("📘 Daily Study Hours", "6")
-    at = st.text_input("📊 Attendance Percentage (%)", "75")
+    sh = st.text_input("📘 Daily Study Hours", "4")
+    at = st.text_input("📊 Attendance Percentage (%)", "40")
     predict = st.button("🚀 Generate Prediction")
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -263,4 +263,5 @@ if predict and linear_model is not None:
 # =============================
 st.markdown("<br><hr><center style='opacity:0.4;'>Hybrid Predictor AI • Internship Project 2026</center>",
             unsafe_allow_html=True)
+
 
