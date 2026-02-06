@@ -59,6 +59,8 @@ Chigo
 │
 ├── main.py
 │
-└── README.md
+├── README.md
+│
+└── requirements.txt
 
 
