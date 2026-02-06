@@ -4,7 +4,6 @@ import joblib
 import matplotlib.pyplot as plt
 import streamlit.components.v1 as components
 from pathlib import Path
-#from PIL import Image
 
 # =============================
 # Page Config
@@ -26,27 +25,21 @@ LINEAR_MODEL_PATH = MODEL_DIR / "linear_model.pkl"
 HYBRID_MODEL_PATH = MODEL_DIR / "hybrid_logistic_model.pkl"
 SCALER_PATH = MODEL_DIR / "scaler.pkl"
 
-
 # =============================
 # Load Models
 # =============================
 @st.cache_resource
 def load_models():
-    try:
-        return (
-            joblib.load(LINEAR_MODEL_PATH),
-            joblib.load(HYBRID_MODEL_PATH),
-            joblib.load(SCALER_PATH),
-        )
-    except Exception as e:
-        st.error(f"Error loading model files: {e}")
-        return None, None, None
-
+    return (
+        joblib.load(LINEAR_MODEL_PATH),
+        joblib.load(HYBRID_MODEL_PATH),
+        joblib.load(SCALER_PATH),
+    )
 
 linear_model, hybrid_model, scaler = load_models()
 
 # =============================
-# CSS (Custom Styling)
+# CSS
 # =============================
 st.markdown("""
 <style>
@@ -59,7 +52,6 @@ st.markdown("""
     border-radius: 25px;
     padding: 35px;
     text-align: center;
-    border: 1px solid rgba(255,255,255,0.1);
 }
 .stTextInput input {
     background-color: white !important;
@@ -75,11 +67,6 @@ st.markdown("""
     height: 45px;
     width: 100%;
     font-weight: bold;
-    border: none;
-}
-.stButton button:hover {
-    background-color: #1d4ed8;
-    color: white;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -92,12 +79,9 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     if IMAGE_PATH.exists():
         st.image(str(IMAGE_PATH), use_column_width=True)
-    else:
-        st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown('<div class="info-box">', unsafe_allow_html=True)
     st.markdown("<h1>🎓 Student Result Prediction</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='opacity:0.8;'>Hybrid ML Model (Pass/Fail + Marks Prediction)</p>", unsafe_allow_html=True)
 
     sh = st.text_input("📘 Daily Study Hours", "6")
     at = st.text_input("📊 Attendance Percentage (%)", "75")
@@ -105,160 +89,158 @@ with col2:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =============================
-# Prediction & Visualization Logic
+# Prediction
 # =============================
-if predict and linear_model is not None:
-    try:
-        sh_val = float(sh)
-        at_val = float(at)
+if predict:
+    sh_val = float(sh)
+    at_val = float(at)
 
-        # ---------- MODEL PIPELINE ----------
-        X_scaled = scaler.transform([[sh_val, at_val]])
-        linear_score = linear_model.predict(X_scaled)[0]
-        hybrid_input = np.column_stack((X_scaled, [linear_score]))
+    X_scaled = scaler.transform([[sh_val, at_val]])
+    linear_score = linear_model.predict(X_scaled)[0]
+    hybrid_input = np.column_stack((X_scaled, [linear_score]))
 
-        pass_prob = hybrid_model.predict_proba(hybrid_input)[0][1]
+    pass_prob = hybrid_model.predict_proba(hybrid_input)[0][1]
 
-        # ---------- MARKS ----------
-        marks = np.clip(
-            linear_score if linear_score > 1 else linear_score * 100,
-            0, 100
-        )
+    marks = np.clip((sh_val * 10 + at_val * 0.5), 35, 90)
 
-        # ---------- REALISM CLAMP ----------
-        expected_marks = (sh_val * 10) + (at_val * 0.5)
-        marks = 0.6 * marks + 0.4 * expected_marks
-        marks = np.clip(marks, 0, 100)
+    result_word = "PASS" if pass_prob >= 0.5 else "FAIL"
 
-        marks = np.clip(marks, 35, 90)
+    if marks >= 85:
+        status_text = "Excellent"
+        status_color = "#22C55E"
+        advice = "Fantastic! Your preparation is solid."
+    elif marks >= 65:
+        status_text = "Good"
+        status_color = "#FACC15"
+        advice = "You're on the right track."
+    else:
+        status_text = "Needs Improvement"
+        status_color = "#EF4444"
+        advice = "Immediate attention required."
 
-        # ---------- EFFORT PENALTY ----------
-        if sh_val < 3 or at_val < 40:
-            pass_prob = min(pass_prob, 0.30)
-            marks = min(marks, 45)
+    with col2:
+        # =============================
+        # RESULT CARD
+        # =============================
+        components.html(f"""
+        <div style="
+            background:rgba(255,255,255,0.15);
+            padding:30px;
+            border-radius:25px;
+            text-align:center;
+        ">
+            <h2>Prediction Result</h2>
+            <p>Pass Probability: <b>{pass_prob*100:.1f}%</b></p>
+            <p>Estimated Marks: <b>{marks:.1f}/100</b></p>
+            <h1 style="color:{status_color}; font-size:80px;">{result_word}</h1>
+        </div>
+        """, height=300)
 
-        # ---------- PASS / FAIL ----------
-        result_word = "PASS" if pass_prob >= 0.5 else "FAIL"
+        # =============================
+        # ADVANCED ANALYTICS
+        # =============================
+        components.html(f"""
+        <div style="
+            margin-top:20px;
+            background:linear-gradient(135deg,#6a11cb,#2575fc);
+            border-radius:30px;
+            padding:40px;
+            color:white;
+        ">
+            <h1>Advanced Analytics</h1>
 
-        # ---------- STATUS (BASED ON MARKS) ----------
-        if marks >= 85:
-            status_text = "Excellent"
-            status_color = "#22C55E"
-            advice = "Fantastic! Your preparation is solid."
-
-        elif marks >= 65:
-            status_text = "Good"
-            status_color = "#FACC15"
-            advice = "You're on the right track. Keep it up!"
-
-        else:
-            status_text = "Needs Improvement"
-            status_color = "#EF4444"
-            advice = "Immediate attention required."
-
-        result_big_text = result_word
-
-
-        # 2. Result Card Display
-        with col2:
-            st.write("")
-            components.html(f"""
+            <!-- MAIN PROGRESS BAR -->
             <div style="
-                background:rgba(255,255,255,0.15);
-                padding:30px;
-                border-radius:25px;
-                text-align:center;
-                color:white;
-                font-family: sans-serif;
-                border: 1px solid rgba(255,255,255,0.1);">
-                <h2 style="margin:0;">Prediction Result</h2>
-                <p style="font-size:18px; margin:10px 0;">Pass Probability: <b>{pass_prob * 100:.1f}%</b></p>
-                <p style="font-size:18px; margin:0;">Estimated Marks: <b>{marks:.1f}/100</b></p>
-                <h1 style="color:{status_color}; font-size:80px; margin:15px 0; font-weight:900; letter-spacing:2px;">
-                    {result_word}
-                </h1>
-            </div>
-            """, height=320)
-
-            # 3. Advanced Analytics Card
-            components.html(f"""
-            <div style="
-                margin-top:20px;
-                background:linear-gradient(135deg,#6a11cb,#2575fc);
-                border-radius:30px;
-                padding:40px;
-                color:white;
-                font-family: sans-serif;
+                background:rgba(255,255,255,0.2);
+                border-radius:15px;
+                height:28px;
+                margin-top:15px;
+                overflow:hidden;
             ">
-                <h1 style="margin:0; font-size:26px;">Advanced Analytics</h1>
-                <div style="border-left: 10px solid {status_color}; padding: 20px; background: rgba(255,255,255,0.1);">
-                <h1 style="color:{status_color};">{result_big_text}</h1>
-                <p>Current Standing: <b>{status_text}</b></p>
-                </div>
-
-                <div style="background:rgba(255,255,255,0.2); border-radius:15px; height:12px; margin-bottom:35px; margin-top:10px;">
-                    <div style="width:{int(pass_prob * 100)}%; background:{status_color}; height:100%; border-radius:15px; box-shadow: 0 0 15px {status_color};"></div>
-                </div>
-
-                <h2 style="font-size:20px;">📌 Potential Scorecard</h2>
-                <hr style="opacity: 0.2; margin-bottom:20px;">
-
-                <div style="margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>📘 <b>Theoretic Proficiency:</b> Concept clear, improve speed.</span>
-                        <span>{int(pass_prob * 85)}%</span>
-                    </div>
-                    <div style="background:rgba(255,255,255,0.1); border-radius:10px; height:8px; margin-top:8px;">
-                        <div style="width:{int(pass_prob * 85)}%; background:#60a5fa; height:100%; border-radius:10px;"></div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>💻 <b>Application Skills:</b>  Good logic, practice projects. </span>
-                        <span>{int(pass_prob * 90)}%</span>
-                    </div>
-                    <div style="background:rgba(255,255,255,0.1); border-radius:10px; height:8px; margin-top:8px;">
-                        <div style="width:{int(pass_prob * 90)}%; background:#22c55e; height:100%; border-radius:10px;"></div>
-                    </div>
-                </div>
-
-                <div style="margin-top:30px; padding:20px; background:rgba(0,0,0,0.2); border-left:8px solid {status_color}; border-radius:15px;">
-                    <b style="font-size:18px;">AI Recommendation:</b><br>
-                    <span>{advice}</span>
+                <div style="
+                    width:{int(pass_prob*100)}%;
+                    background:{status_color};
+                    height:100%;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-weight:bold;
+                    transition:width 1s ease-in-out;
+                ">
+                    {int(pass_prob*100)}%
                 </div>
             </div>
-            """, height=580)
 
-            # 4. Performance Chart
-            st.write("## 📈 Performance Benchmarking")
-            hours_range = np.arange(1, 11)
-            marks_trend = np.array([25, 32, 40, 48, 55, 65, 75, 82, 90, 96])
+            <h3 style="margin-top:30px;">📌 Potential Scorecard</h3>
 
-            fig, ax = plt.subplots(figsize=(10, 5))
-            fig.patch.set_facecolor('#000000')
-            ax.set_facecolor('#4B0082')
+            <!-- THEORY -->
+            <p>📘 Theoretic Proficiency</p>
+            <div style="background:rgba(255,255,255,0.15); height:22px; border-radius:10px;">
+                <div style="
+                    width:{int(pass_prob*85)}%;
+                    background:#60a5fa;
+                    height:100%;
+                    border-radius:10px;
+                    text-align:center;
+                    font-size:13px;
+                    font-weight:bold;
+                ">
+                    {int(pass_prob*85)}%
+                </div>
+            </div>
 
-            ax.plot(hours_range, marks_trend, color='#60a5fa', linewidth=3, marker='o', markerfacecolor='white',
-                    label='Average Growth')
-            ax.scatter(sh_val, marks, color=status_color, s=250, zorder=5, label='Your Prediction', edgecolor='white')
+            <!-- PRACTICAL -->
+            <p style="margin-top:15px;">💻 Application Skills</p>
+            <div style="background:rgba(255,255,255,0.15); height:22px; border-radius:10px;">
+                <div style="
+                    width:{int(pass_prob*90)}%;
+                    background:#22c55e;
+                    height:100%;
+                    border-radius:10px;
+                    text-align:center;
+                    font-size:13px;
+                    font-weight:bold;
+                ">
+                    {int(pass_prob*90)}%
+                </div>
+            </div>
 
-            ax.annotate(f"{marks:.1f}", (sh_val, marks), xytext=(sh_val, marks + 5), color='white', fontweight='bold',
-                        ha='center')
+            <div style="
+                margin-top:30px;
+                background:rgba(0,0,0,0.25);
+                padding:20px;
+                border-left:6px solid {status_color};
+                border-radius:15px;
+            ">
+                <b>AI Recommendation:</b><br>{advice}
+            </div>
+        </div>
+        """, height=600)
 
-            ax.set_xlabel("Study Hours", color='white')
-            ax.set_ylabel("Expected Marks", color='white')
-            ax.tick_params(colors='white')
-            ax.grid(True, alpha=0.1)
-            ax.legend(facecolor='#4B0082', labelcolor='white')
+        # =============================
+        # PERFORMANCE CHART
+        # =============================
+        st.write("## 📈 Performance Benchmarking")
 
-            st.pyplot(fig)
+        hours_range = np.arange(1, 11)
+        marks_trend = [25, 32, 40, 48, 55, 65, 75, 82, 90, 96]
 
-    except Exception as e:
-        st.error(f"Prediction Error: {e}")
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.set_facecolor('#4B0082')
+        fig.patch.set_facecolor('#000000')
+
+        ax.plot(hours_range, marks_trend, linewidth=3, marker='o', label='Average Growth')
+        ax.scatter(sh_val, marks, s=200, label='Your Prediction')
+
+        ax.set_xlabel("Study Hours")
+        ax.set_ylabel("Expected Marks")
+        ax.legend()
+        ax.grid(alpha=0.2)
+
+        st.pyplot(fig)
 
 # =============================
 # Footer
 # =============================
-st.markdown("<br><hr><center style='opacity:0.4;'>Hybrid Predictor AI • Internship Project 2026</center>",
+st.markdown("<hr><center style='opacity:0.4;'>Hybrid Predictor AI • Internship Project 2026</center>",
             unsafe_allow_html=True)
