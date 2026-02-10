@@ -64,7 +64,7 @@ st.markdown("""
 }
 .stTextInput input {
     background-color: white !important;
-    color: black !important;
+    color: White !important;
     border-radius: 12px;
     height: 45px;
     text-align: center;
@@ -263,5 +263,6 @@ if predict and linear_model is not None:
 # =============================
 st.markdown("<br><hr><center style='opacity:0.4;'>Hybrid Predictor AI • Internship Project 2026</center>",
             unsafe_allow_html=True)
+
 
 
