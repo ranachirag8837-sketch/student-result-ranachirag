@@ -33,13 +33,12 @@ SCALER_PATH = MODEL_DIR / "scaler.pkl"
 @st.cache_resource
 def load_models():
     try:
-        return (
-            joblib.load(LINEAR_MODEL_PATH),
-            joblib.load(HYBRID_MODEL_PATH),
-            joblib.load(SCALER_PATH),
-        )
+        linear = joblib.load(LINEAR_MODEL_PATH)
+        hybrid = joblib.load(HYBRID_MODEL_PATH)
+        scaler_obj = joblib.load(SCALER_PATH)
+        return linear, hybrid, scaler_obj
     except Exception as e:
-        st.error(f"Error loading model files: {e}")
+        st.error(f"Model loading error: {e}")
         return None, None, None
 
 
@@ -87,7 +86,7 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
 
     if IMAGE_PATH.exists():
-        st.image(str(IMAGE_PATH), use_column_width=True)
+        st.image(str(IMAGE_PATH), use_container_width=True)
     else:
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -98,8 +97,8 @@ with col2:
         unsafe_allow_html=True
     )
 
-    sh = st.number_input("📘 Daily Study Hours", 0.0, 12.0, 4.0)
-    at = st.number_input("📊 Attendance Percentage (%)", 0.0, 100.0, 40.0)
+    sh = st.number_input("📘 Daily Study Hours", 0.0, 12.0, 4.0, step=0.5)
+    at = st.number_input("📊 Attendance Percentage (%)", 0.0, 100.0, 40.0, step=1.0)
 
     predict = st.button("🚀 Generate Prediction")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -108,27 +107,32 @@ with col2:
 # =============================
 # Prediction Logic
 # =============================
-if predict and linear_model is not None:
+if predict and linear_model is not None and scaler is not None:
     try:
         sh_val = np.clip(float(sh), 0, 12)
         at_val = np.clip(float(at), 0, 100)
 
         # ---------- MODEL PIPELINE ----------
         X_scaled = scaler.transform([[sh_val, at_val]])
-        linear_score = linear_model.predict(X_scaled)[0]
+        linear_score = float(linear_model.predict(X_scaled)[0])
+
         hybrid_input = np.column_stack((X_scaled, [linear_score]))
-        pass_prob = hybrid_model.predict_proba(hybrid_input)[0][1]
+        pass_prob = float(hybrid_model.predict_proba(hybrid_input)[0][1])
 
         pass_prob = np.clip(pass_prob, 0, 1)
 
-        # ---------- MARKS ----------
-        marks = linear_score if linear_score > 1 else linear_score * 100
+        # ---------- MARKS FIX ----------
+        if linear_score <= 1:
+            marks = linear_score * 100
+        else:
+            marks = linear_score
+
         marks = np.clip(marks, 0, 100)
 
         # ---------- REALISM CLAMP ----------
-        expected_marks = (sh_val * 10) + (at_val * 0.5)
-        marks = 0.6 * marks + 0.4 * expected_marks
-        marks = np.clip(marks, 35, 90)
+        expected_marks = (sh_val * 8) + (at_val * 0.4)
+        marks = 0.7 * marks + 0.3 * expected_marks
+        marks = np.clip(marks, 35, 95)
 
         # ---------- EFFORT PENALTY ----------
         if sh_val < 3 or at_val < 40:
@@ -168,7 +172,7 @@ if predict and linear_model is not None:
             ">
                 <h2>Prediction Result</h2>
                 <p>Pass Probability: <b>{pass_prob * 100:.1f}%</b></p>
-                <p>Estimated Marks: <b>{marks:.1f}/100</b></p>
+                <p>Estimated Marks: <b>{marks:.1f}%</b></p>
                 <h1 style="color:{status_color}; font-size:70px;">
                     {result_word}
                 </h1>
@@ -191,7 +195,8 @@ if predict and linear_model is not None:
             ax.scatter(sh_val, marks, s=200)
 
             ax.set_xlabel("Study Hours")
-            ax.set_ylabel("Expected Marks")
+            ax.set_ylabel("Expected Marks (%)")
+            ax.set_ylim(0, 100)
             ax.grid(True)
 
             st.pyplot(fig)
