@@ -97,8 +97,8 @@ with col2:
         unsafe_allow_html=True
     )
 
-    sh = st.number_input("📘 Daily Study Hours", 0, 12.0, 4.0, step=0.5)
-    at = st.number_input("📊 Attendance Percentage (%)", 0, 100.0, 40.0, step=1.0)
+    sh = st.number_input("📘 Daily Study Hours", 0.0, 12.0, 4.0, step=0.5)
+    at = st.number_input("📊 Attendance Percentage (%)", 0.0, 100.0, 40.0, step=1.0)
 
     predict = st.button("🚀 Generate Prediction")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -216,6 +216,7 @@ if predict and linear_model is not None and scaler is not None:
 # =============================
 st.markdown("---")
 st.caption("Hybrid Predictor AI • Scientifically Aligned Version • 2026")
+
 
 
 
