@@ -151,9 +151,9 @@ if predict and linear_model is not None and scaler is not None:
             status_color = "#FACC15"
             advice = "Strong performance. Keep improving!"
         elif marks >= 35:
-            status_text = "Needs Improvement"
-            status_color = "#F97316"
-            advice = "You passed, but more effort is needed."
+            status_text = "Pass - Basic Level"
+            status_color = "#f97316"
+            advice = "You passed, but improvement is needed for higher grades."
         else:
             status_text = "At Risk"
             status_color = "#EF4444"
@@ -216,4 +216,5 @@ if predict and linear_model is not None and scaler is not None:
 # =============================
 st.markdown("---")
 st.caption("Hybrid Predictor AI • Scientifically Aligned Version • 2026")
+
 
