@@ -129,7 +129,7 @@ if predict and linear_model is not None and scaler is not None:
         expected_marks = (sh_val / 12) * 60 + (at_val / 100) * 40
 
         # Blend ML + Academic Formula
-        marks = 0.6 * model_marks + 0.4 * expected_marks
+        marks = 0.3 * model_marks + 0.7 * expected_marks
         marks = np.clip(marks, 0, 100)
 
         # ---------- PASS LOGIC (BASED ON MARKS) ----------
@@ -216,3 +216,4 @@ if predict and linear_model is not None and scaler is not None:
 # =============================
 st.markdown("---")
 st.caption("Hybrid Predictor AI • Scientifically Aligned Version • 2026")
+
