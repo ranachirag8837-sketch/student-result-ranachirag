@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import streamlit.components.v1 as components
 from pathlib import Path
 
+
 # =============================
 # Page Config
 # =============================
@@ -25,21 +26,58 @@ LINEAR_MODEL_PATH = MODEL_DIR / "linear_model.pkl"
 HYBRID_MODEL_PATH = MODEL_DIR / "hybrid_logistic_model.pkl"
 SCALER_PATH = MODEL_DIR / "scaler.pkl"
 
+
 # =============================
 # Load Models
 # =============================
 @st.cache_resource
 def load_models():
     try:
-        linear = joblib.load(LINEAR_MODEL_PATH)
-        hybrid = joblib.load(HYBRID_MODEL_PATH)
-        scaler = joblib.load(SCALER_PATH)
-        return linear, hybrid, scaler
+        return (
+            joblib.load(LINEAR_MODEL_PATH),
+            joblib.load(HYBRID_MODEL_PATH),
+            joblib.load(SCALER_PATH),
+        )
     except Exception as e:
-        st.error(f"Model loading error: {e}")
+        st.error(f"Error loading model files: {e}")
         return None, None, None
 
+
 linear_model, hybrid_model, scaler = load_models()
+
+
+# =============================
+# CSS Styling
+# =============================
+st.markdown("""
+<style>
+.stApp {
+    background-color: #4B0082;
+    color: white;
+}
+.info-box {
+    background: rgba(255,255,255,0.12);
+    border-radius: 25px;
+    padding: 35px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.stButton button {
+    background-color: #2563eb;
+    color: white;
+    border-radius: 12px;
+    height: 45px;
+    width: 100%;
+    font-weight: bold;
+    border: none;
+}
+.stButton button:hover {
+    background-color: #1d4ed8;
+    color: white;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 # =============================
 # UI Layout
@@ -50,27 +88,28 @@ with col2:
 
     if IMAGE_PATH.exists():
         st.image(str(IMAGE_PATH), use_column_width=True)
+    else:
+        st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown("## 🎓 Student Result Prediction")
-    st.markdown("Hybrid ML Model (Pass/Fail + Marks Prediction)")
+    st.markdown('<div class="info-box">', unsafe_allow_html=True)
+    st.markdown("<h1>🎓 Student Result Prediction</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<p style='opacity:0.8;'>Hybrid ML Model (Pass/Fail + Marks Prediction)</p>",
+        unsafe_allow_html=True
+    )
 
-    # 🔐 Safe Inputs
     sh = st.number_input("📘 Daily Study Hours", 0.0, 12.0, 4.0)
     at = st.number_input("📊 Attendance Percentage (%)", 0.0, 100.0, 40.0)
 
     predict = st.button("🚀 Generate Prediction")
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 # =============================
 # Prediction Logic
 # =============================
-if predict:
-
-    if None in (linear_model, hybrid_model, scaler):
-        st.error("Model not loaded properly.")
-        st.stop()
-
+if predict and linear_model is not None:
     try:
-        # Safety Clamp
         sh_val = np.clip(float(sh), 0, 12)
         at_val = np.clip(float(at), 0, 100)
 
@@ -78,18 +117,17 @@ if predict:
         X_scaled = scaler.transform([[sh_val, at_val]])
         linear_score = linear_model.predict(X_scaled)[0]
         hybrid_input = np.column_stack((X_scaled, [linear_score]))
-
         pass_prob = hybrid_model.predict_proba(hybrid_input)[0][1]
 
-        # 🔐 Safety Clamp for Probability
         pass_prob = np.clip(pass_prob, 0, 1)
 
         # ---------- MARKS ----------
-        raw_marks = linear_score if linear_score > 1 else linear_score * 100
-        raw_marks = np.clip(raw_marks, 0, 100)
+        marks = linear_score if linear_score > 1 else linear_score * 100
+        marks = np.clip(marks, 0, 100)
 
+        # ---------- REALISM CLAMP ----------
         expected_marks = (sh_val * 10) + (at_val * 0.5)
-        marks = 0.6 * raw_marks + 0.4 * expected_marks
+        marks = 0.6 * marks + 0.4 * expected_marks
         marks = np.clip(marks, 35, 90)
 
         # ---------- EFFORT PENALTY ----------
@@ -114,23 +152,30 @@ if predict:
             status_color = "#EF4444"
             advice = "Immediate attention required."
 
-        safe_percent = int(pass_prob * 100)
-
         # =============================
         # Result Card
         # =============================
         with col2:
 
-            st.markdown("### 📊 Prediction Result")
-            st.metric("Pass Probability", f"{safe_percent}%")
-            st.metric("Estimated Marks", f"{marks:.1f}/100")
-            st.markdown(f"## {result_word}")
+            components.html(f"""
+            <div style="
+                background:rgba(255,255,255,0.15);
+                padding:30px;
+                border-radius:25px;
+                text-align:center;
+                color:white;
+                font-family:sans-serif;
+            ">
+                <h2>Prediction Result</h2>
+                <p>Pass Probability: <b>{pass_prob * 100:.1f}%</b></p>
+                <p>Estimated Marks: <b>{marks:.1f}/100</b></p>
+                <h1 style="color:{status_color}; font-size:70px;">
+                    {result_word}
+                </h1>
+            </div>
+            """, height=300)
 
-            # Progress Bar
-            st.progress(safe_percent / 100)
-
-            # Status
-            st.markdown(f"**Status:** {status_text}")
+            st.markdown(f"### Current Standing: {status_text}")
             st.info(advice)
 
             # =============================
@@ -142,27 +187,18 @@ if predict:
             marks_trend = np.array([25, 32, 40, 48, 55, 65, 75, 82, 90, 96])
 
             fig, ax = plt.subplots(figsize=(10, 5))
-
-            ax.plot(hours_range, marks_trend, linewidth=3, marker='o',
-                    label='Average Growth')
-
-            ax.scatter(sh_val, marks, s=200,
-                       label='Your Prediction')
-
-            ax.annotate(f"{marks:.1f}",
-                        (sh_val, marks),
-                        xytext=(sh_val, marks + 5),
-                        ha='center')
+            ax.plot(hours_range, marks_trend, marker='o', linewidth=3)
+            ax.scatter(sh_val, marks, s=200)
 
             ax.set_xlabel("Study Hours")
             ax.set_ylabel("Expected Marks")
             ax.grid(True)
-            ax.legend()
 
             st.pyplot(fig)
 
     except Exception as e:
         st.error(f"Prediction Error: {e}")
+
 
 # =============================
 # Footer
