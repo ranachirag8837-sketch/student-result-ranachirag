@@ -103,6 +103,9 @@ with col2:
     sh = st.number_input("📘 Daily Study Hours", min_value=0.0, max_value=12.0, value=4.0)
     at = st.number_input("📊 Attendance Percentage (%)", min_value=0.0, max_value=100.0, value=40.0)
 
+    sh_val = np.clip(sh_val, 0, 12)
+    at_val = np.clip(at_val, 0, 100)
+
     predict = st.button("🚀 Generate Prediction")
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -264,6 +267,7 @@ if predict and linear_model is not None:
 # =============================
 st.markdown("<br><hr><center style='opacity:0.4;'>Hybrid Predictor AI • Internship Project 2026</center>",
             unsafe_allow_html=True)
+
 
 
 
