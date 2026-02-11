@@ -46,7 +46,7 @@ linear_model, hybrid_model, scaler = load_models()
 
 
 # =============================
-# CSS Styling
+# CSS Styling (UNCHANGED DESIGN)
 # =============================
 st.markdown("""
 <style>
@@ -93,7 +93,7 @@ with col2:
     st.markdown('<div class="info-box">', unsafe_allow_html=True)
     st.markdown("<h1>🎓 Student Result Prediction</h1>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='opacity:0.8;'>Hybrid ML Model (Pass/Fail + Marks Prediction)</p>",
+        "<p style='opacity:0.8;'>Hybrid ML Model (Scientifically Aligned)</p>",
         unsafe_allow_html=True
     )
 
@@ -105,7 +105,7 @@ with col2:
 
 
 # =============================
-# Prediction Logic
+# Prediction Logic (ALIGNED)
 # =============================
 if predict and linear_model is not None and scaler is not None:
     try:
@@ -116,45 +116,51 @@ if predict and linear_model is not None and scaler is not None:
         X_scaled = scaler.transform([[sh_val, at_val]])
         linear_score = float(linear_model.predict(X_scaled)[0])
 
-        hybrid_input = np.column_stack((X_scaled, [linear_score]))
-        pass_prob = float(hybrid_model.predict_proba(hybrid_input)[0][1])
-
-        pass_prob = np.clip(pass_prob, 0, 1)
-
-        # ---------- MARKS FIX ----------
+        # Convert to marks if model outputs 0–1
         if linear_score <= 1:
-            marks = linear_score * 100
+            model_marks = linear_score * 100
         else:
-            marks = linear_score
+            model_marks = linear_score
 
+        model_marks = np.clip(model_marks, 0, 100)
+
+        # ---------- SCIENTIFIC EXPECTATION MODEL ----------
+        # Study weight = 60%, Attendance = 40%
+        expected_marks = (sh_val / 12) * 60 + (at_val / 100) * 40
+
+        # Blend ML + Academic Formula
+        marks = 0.6 * model_marks + 0.4 * expected_marks
         marks = np.clip(marks, 0, 100)
 
-        # ---------- REALISM CLAMP ----------
-        expected_marks = (sh_val * 8) + (at_val * 0.4)
-        marks = 0.7 * marks + 0.3 * expected_marks
-        marks = np.clip(marks, 35, 95)
+        # ---------- PASS LOGIC (BASED ON MARKS) ----------
+        pass_threshold = 35
+        result_word = "PASS" if marks >= pass_threshold else "FAIL"
 
-        # ---------- EFFORT PENALTY ----------
-        if sh_val < 3 or at_val < 40:
-            pass_prob = min(pass_prob, 0.30)
-            marks = min(marks, 45)
-
-        # ---------- PASS / FAIL ----------
-        result_word = "PASS" if pass_prob >= 0.5 else "FAIL"
+        # ---------- PROBABILITY ALIGNED WITH MARKS ----------
+        # Smooth probability curve based on marks
+        pass_prob = 1 / (1 + np.exp(-(marks - pass_threshold)/5))
+        pass_prob = np.clip(pass_prob, 0, 1)
 
         # ---------- STATUS ----------
         if marks >= 85:
             status_text = "Excellent"
             status_color = "#22C55E"
-            advice = "Fantastic! Your preparation is solid."
+            advice = "Outstanding academic performance!"
         elif marks >= 65:
             status_text = "Good"
             status_color = "#FACC15"
-            advice = "You're on the right track. Keep it up!"
-        else:
+            advice = "Strong performance. Keep improving!"
+        elif marks >= 35:
             status_text = "Needs Improvement"
+            status_color = "#F97316"
+            advice = "You passed, but more effort is needed."
+        else:
+            status_text = "At Risk"
             status_color = "#EF4444"
-            advice = "Immediate attention required."
+            advice = "High risk of failure. Immediate attention required."
+
+        # PASS color independent
+        result_color = "#22C55E" if result_word == "PASS" else "#EF4444"
 
         # =============================
         # Result Card
@@ -173,7 +179,7 @@ if predict and linear_model is not None and scaler is not None:
                 <h2>Prediction Result</h2>
                 <p>Pass Probability: <b>{pass_prob * 100:.1f}%</b></p>
                 <p>Estimated Marks: <b>{marks:.1f}%</b></p>
-                <h1 style="color:{status_color}; font-size:70px;">
+                <h1 style="color:{result_color}; font-size:70px;">
                     {result_word}
                 </h1>
             </div>
@@ -188,7 +194,7 @@ if predict and linear_model is not None and scaler is not None:
             st.write("## 📈 Performance Benchmarking")
 
             hours_range = np.arange(1, 11)
-            marks_trend = np.array([25, 32, 40, 48, 55, 65, 75, 82, 90, 96])
+            marks_trend = (hours_range / 12) * 60 + (at_val / 100) * 40
 
             fig, ax = plt.subplots(figsize=(10, 5))
             ax.plot(hours_range, marks_trend, marker='o', linewidth=3)
@@ -209,4 +215,4 @@ if predict and linear_model is not None and scaler is not None:
 # Footer
 # =============================
 st.markdown("---")
-st.caption("Hybrid Predictor AI • Internship Project 2026")
+st.caption("Hybrid Predictor AI • Scientifically Aligned Version • 2026")
